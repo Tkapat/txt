@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: [
+    "onnxruntime-node",
+    "sharp",
+    "@huggingface/transformers",
+  ],
+  outputFileTracingIncludes: {
+    "/*": ["./models/**"],
+  },
   experimental: {
     agentFeedback: true,
   },

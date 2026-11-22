@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# txt
 
-## Getting Started
+AI-writing detection for text, documents and product reviews. The app is a single Next.js project: a thin App Router HTTP layer over a typed TypeScript backend that runs the trained ONNX models locally.
 
-First, run the development server:
+The backend design is documented in [`docs/backendPlan.md`](docs/backendPlan.md).
+
+## Requirements
+
+- Node.js 24 or newer (`unpdf` requires Node 24)
+- pnpm 10
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Copy the exported models from Team A into the project root. The directory is git-ignored and must be shared out of band (Drive or a Release):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+models/
+├── review/
+│   ├── config.json
+│   ├── tokenizer.json
+│   ├── tokenizer_config.json
+│   └── onnx/model_quantized.onnx
+├── document/
+│   └── ... same layout ...
+└── meta/
+    ├── review-meta.json
+    ├── document-meta.json
+    ├── stylometric.json
+    ├── stacker.json
+    └── golden.json
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Until the models are present, `/api/health` returns `available: false` and the detection routes return `503 model_unavailable`. Everything else (validation, limits, extractors, analytics) works.
 
-## Learn More
+## Run
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm dev       # development server on http://localhost:3000
+pnpm build     # production build
+pnpm start     # production server
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Checks
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+```
 
-## Deploy on Vercel
+`tests/golden.test.ts` runs automatically once `models/meta/golden.json` exists. The feature-parity tests also run against the checked-in Python reference vectors in `tests/fixtures/features-golden.json`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## API
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Method + path | Body | Returns |
+|---|---|---|
+| `POST /api/detect/text` | `{ text: string, model?: "review" \| "document" }` | `TextResult` or `DocumentResult` |
+| `POST /api/detect/file` | multipart `file` (`.txt`, `.md`, `.docx`, `.pdf`) | `DocumentResult` with `source` |
+| `POST /api/detect/reviews` | JSON `{ reviews: ReviewInput[] }` or multipart CSV `file` | `ReviewsReport` |
+| `GET /api/health` | none | `{ ok, models, available }` |
+
+Errors use `{ error: { code, message } }` with codes such as `empty_text` (422), `too_large` (413), `unsupported_type` (415), `scanned_pdf` (422), `rate_limited` (429), `bad_request` (400), `model_unavailable` (503) and `internal` (500).
+
+Limits: 100,000 characters per text, 10 MB per file, 500 reviews per request, and per-IP request rate limits.
+
+## Privacy
+
+No database and no request-body logging. User text is processed in memory and discarded. The API responses include a `detector_not_proof` warning because the model output is evidence, not proof.
+
+## Deployment
+
+`onnxruntime-node` is large. Run this on a Node server or in Docker (VPS, Railway, Render, a Hugging Face Space) rather than a serverless function with a small bundle limit.
+
+API route handlers run on the Node.js runtime by default. Cache Components is enabled, so the project does not export the deprecated `runtime` route segment config.

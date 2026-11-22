@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local model files (shared out-of-band, see README)
+/models/*
+!/models/.gitkeep
+/.cache/
