@@ -1,64 +1,70 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import { pipeline, env } from "@huggingface/transformers";
 import { ApiError } from "@/backend/http/errors";
 import type { ModelKey } from "@/shared/types";
-import {
-  DOCUMENT_MODEL_DIR,
-  MODELS_DIR,
-  REVIEW_MODEL_DIR,
-  SCORE_BATCH_SIZE,
-} from "@/backend/config";
+import type { ModelMeta } from "@/backend/model/meta";
+import { ML_SERVICE_URL, ML_TIMEOUT_MS } from "@/backend/config";
 
-env.allowRemoteModels = false;
-env.allowLocalModels = true;
-env.localModelPath = MODELS_DIR;
+type MetaEntry = { value: ModelMeta; at: number };
 
-type Row = { label: string; score: number };
-type Classifier = (
-  inputs: string[],
-  opts?: { top_k?: number | null },
-) => Promise<Row[] | Row[][]>;
-
-const globalCache = globalThis as unknown as {
-  __txtModels?: Map<ModelKey, Promise<Classifier>>;
+type GlobalCache = {
+  __txtModelMeta?: Map<ModelKey, MetaEntry>;
 };
-const cache = (globalCache.__txtModels ??= new Map());
 
-export function getClassifier(key: ModelKey): Promise<Classifier> {
-  if (!cache.has(key)) {
-    const classifier = pipeline("text-classification", key, { dtype: "q8" })
-      .then((p) => p as unknown as Classifier)
-      .catch((error: unknown) => {
-        cache.delete(key);
-        throw error;
-      });
-    cache.set(key, classifier);
-  }
-  return cache.get(key)!;
+const globalCache = globalThis as unknown as GlobalCache;
+
+const META_TTL_MS = 60_000;
+
+function metaCache(): Map<ModelKey, MetaEntry> {
+  return (globalCache.__txtModelMeta ??= new Map());
 }
 
-const modelDirs: Record<ModelKey, string> = {
-  review: REVIEW_MODEL_DIR,
-  document: DOCUMENT_MODEL_DIR,
-};
+async function callService<T>(route: string, init?: RequestInit): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${ML_SERVICE_URL}${route}`, {
+      ...init,
+      signal: AbortSignal.timeout(ML_TIMEOUT_MS),
+    });
+  } catch {
+    throw new ApiError(
+      "model_unavailable",
+      "The detection model service is unreachable.",
+      503,
+    );
+  }
+  if (!response.ok) {
+    throw new ApiError(
+      "model_unavailable",
+      "The detection model is not ready.",
+      503,
+    );
+  }
+  return response.json() as Promise<T>;
+}
 
-const readyCache = new Map<ModelKey, Promise<boolean>>();
+export async function getModelMeta(key: ModelKey): Promise<ModelMeta> {
+  const cache = metaCache();
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.at < META_TTL_MS) return cached.value;
+  const meta = await callService<ModelMeta>(`/meta/${key}`);
+  cache.set(key, { value: meta, at: Date.now() });
+  return meta;
+}
+
+export const getReviewMeta = (): Promise<ModelMeta> => getModelMeta("review");
 
 export function clearClassifierCache(): void {
-  cache.clear();
-  readyCache.clear();
+  metaCache().clear();
 }
 
-export function isModelReady(key: ModelKey): Promise<boolean> {
-  const cached = readyCache.get(key);
-  if (cached) return cached;
-  const check = modelReady(modelDirs[key]).then((ready) => {
-    if (!ready) readyCache.delete(key);
-    return ready;
-  });
-  readyCache.set(key, check);
-  return check;
+export async function isModelReady(key: ModelKey): Promise<boolean> {
+  try {
+    const health = await callService<{
+      models?: Record<string, { ready?: boolean }>;
+    }>("/health");
+    return health.models?.[key]?.ready === true;
+  } catch {
+    return false;
+  }
 }
 
 export async function requireModel(key: ModelKey): Promise<void> {
@@ -74,66 +80,57 @@ export async function requireModel(key: ModelKey): Promise<void> {
 export async function scoreBatch(
   key: ModelKey,
   texts: string[],
-  batch = SCORE_BATCH_SIZE,
 ): Promise<number[]> {
   if (texts.length === 0) return [];
-  await requireModel(key);
-  const clf = await getClassifier(key);
-  const out: number[] = [];
-  for (let i = 0; i < texts.length; i += batch) {
-    const res = await clf(texts.slice(i, i + batch), { top_k: null });
-    const rows = (Array.isArray(res) && Array.isArray(res[0])
-      ? res
-      : [res]) as Row[][];
-    for (const row of rows) {
-      const labels = Array.isArray(row) ? row : [row];
-      const ai = labels.find((l) => l.label.toLowerCase() === "ai");
-      if (!ai) {
-        throw new Error(
-          `Model "${key}" has no 'ai' label: ${JSON.stringify(labels)}`,
-        );
-      }
-      if (!Number.isFinite(ai.score)) {
-        throw new Error(`Model "${key}" returned a non-finite score`);
-      }
-      out.push(ai.score);
+  const result = await callService<{ probabilities?: number[] }>("/score", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ texts, model: key }),
+  });
+  const probabilities = result.probabilities;
+  if (!Array.isArray(probabilities) || probabilities.length !== texts.length) {
+    throw new ApiError(
+      "model_unavailable",
+      "The model service returned an invalid response.",
+      503,
+    );
+  }
+  for (const value of probabilities) {
+    if (!Number.isFinite(value) || value < 0 || value > 1) {
+      throw new ApiError(
+        "model_unavailable",
+        "The model service returned an invalid score.",
+        503,
+      );
     }
   }
-  return out;
+  return probabilities;
 }
 
-async function modelReady(dir: string): Promise<boolean> {
-  try {
-    await Promise.all([
-      fs.access(path.join(dir, "config.json")),
-      fs.access(path.join(dir, "tokenizer.json")),
-      fs.access(path.join(dir, "onnx", "model_quantized.onnx")),
-    ]);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function modelsInstalled(): Promise<boolean> {
+export async function modelsStatus(): Promise<{
+  review: boolean;
+  document: boolean;
+}> {
   const [review, document] = await Promise.all([
     isModelReady("review"),
     isModelReady("document"),
   ]);
-  return review && document;
+  return { review, document };
+}
+
+export async function modelsInstalled(): Promise<boolean> {
+  const status = await modelsStatus();
+  return status.review && status.document;
 }
 
 export async function warmup(): Promise<void> {
-  if (!(await modelsInstalled())) {
-    console.info(
-      "Model warmup skipped: models/review or models/document is missing.",
-    );
-    return;
+  for (const key of ["review", "document"] as const) {
+    try {
+      await scoreBatch(key, [
+        `warm up the ${key} model with a short sentence.`,
+      ]);
+    } catch (error) {
+      console.info(`${key} model warmup skipped:`, (error as Error).message);
+    }
   }
-  await scoreBatch("review", [
-    "warm up the review model with a short sentence.",
-  ]);
-  await scoreBatch("document", [
-    "warm up the document model with a short sentence.",
-  ]);
 }

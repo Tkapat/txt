@@ -16,9 +16,8 @@ export function verdictLabel(v: Verdict): string {
     case "likely_ai":
       return "Reads as likely AI-written";
     case "likely_human":
-      return "Reads as likely human-written";
     case "uncertain":
-      return "Could be either. The signals are mixed.";
+      return "Reads as likely human-written";
   }
 }
 
@@ -28,9 +27,8 @@ export function stampText(v: Verdict): string {
     case "likely_ai":
       return "Likely AI-written";
     case "likely_human":
-      return "Likely human-written";
     case "uncertain":
-      return "Uncertain";
+      return "Likely human-written";
   }
 }
 

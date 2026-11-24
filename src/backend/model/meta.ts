@@ -19,6 +19,7 @@ export function clearMetaCache(): void {
 
 export interface ModelMeta {
   version: string;
+  max_tokens?: number;
   chunk: { words: number; stride: number; min_words: number };
   thresholds: { low: number; high: number };
   sensitivity_unseen: number;

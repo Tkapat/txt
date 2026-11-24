@@ -44,3 +44,9 @@ next-env.d.ts
 /models/*
 !/models/.gitkeep
 /.cache/
+
+# python inference service
+/ml/models/
+/ml/.venv/
+__pycache__/
+*.pyc

@@ -7,7 +7,7 @@ export async function topEvidence(
   text: string,
   scorer: Scorer,
   k = 3,
-  maxUnits = 24,
+  maxUnits = 8,
 ): Promise<PhraseEvidence[]> {
   let units = splitUnits(text);
   if (units.length < 2) units = splitClauses(text);

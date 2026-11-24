@@ -108,7 +108,7 @@ body {
 }
 
 .stamp[data-verdict="uncertain"] {
-  color: var(--stamp-amber);
+  color: var(--stamp-green);
 }
 
 /* Handwritten margin notes */

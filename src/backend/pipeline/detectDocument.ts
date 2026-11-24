@@ -1,5 +1,5 @@
 import type { DocumentResult, Warning } from "@/shared/types";
-import { loadJson, type ModelMeta } from "@/backend/model/meta";
+import { getModelMeta } from "@/backend/model/registry";
 import { chunkText } from "@/backend/detector/chunker";
 import { scoreDocumentChunks } from "@/backend/detector/score";
 import { toConfidence, toVerdict } from "@/backend/detector/verdict";
@@ -10,7 +10,7 @@ export async function scoreAsDocument(
   wordCount: number,
   warnings: Warning[],
 ): Promise<DocumentResult> {
-  const meta = await loadJson<ModelMeta>("document-meta");
+  const meta = await getModelMeta("document");
   const chunks = chunkText(
     text,
     meta.chunk.words,

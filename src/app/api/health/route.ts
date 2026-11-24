@@ -1,11 +1,11 @@
 import { connection } from "next/server";
 import { handle } from "@/backend/http/handler";
-import { loadJson, type ModelMeta } from "@/backend/model/meta";
-import { modelsInstalled } from "@/backend/model/registry";
+import { getModelMeta, modelsStatus } from "@/backend/model/registry";
+import type { ModelKey } from "@/shared/types";
 
-async function version(name: string): Promise<string | null> {
+async function version(key: ModelKey): Promise<string | null> {
   try {
-    return (await loadJson<ModelMeta>(name)).version;
+    return (await getModelMeta(key)).version;
   } catch {
     return null;
   }
@@ -13,12 +13,17 @@ async function version(name: string): Promise<string | null> {
 
 export async function GET() {
   await connection();
-  return handle(async () => ({
-    ok: true,
-    models: {
-      review: await version("review-meta"),
-      document: await version("document-meta"),
-    },
-    available: await modelsInstalled(),
-  }));
+  return handle(async () => {
+    const [review, document, ready] = await Promise.all([
+      version("review"),
+      version("document"),
+      modelsStatus(),
+    ]);
+    return {
+      ok: true,
+      models: { review, document },
+      available: ready.review || ready.document,
+      ready,
+    };
+  });
 }

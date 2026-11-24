@@ -35,3 +35,11 @@ export function stylometricProbWith(model: Sty, features: number[]): number {
 export async function stylometricProb(features: number[]): Promise<number> {
   return stylometricProbWith(await loadJson<Sty>("stylometric"), features);
 }
+
+export async function loadStylometricOrNull(): Promise<Sty | null> {
+  try {
+    return await loadJson<Sty>("stylometric");
+  } catch {
+    return null;
+  }
+}

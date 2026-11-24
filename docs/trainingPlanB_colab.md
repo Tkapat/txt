@@ -502,91 +502,91 @@ with open(os.path.join(REPORTS, "document-results.json"), "w") as f:
 print("meta:", meta)
 ```
 
----
 
-## Cell 8 — export ONNX, quantize, build app folder, parity check (B6)
+## Cell 8 — export PyTorch model for local CPU inference (B6, updated)
 
 > [!NOTE]
-> We use `optimum-cli export onnx` instead of raw `torch.onnx.export`.
-> RoBERTa has no `token_type_ids` and the torch tracer can silently mis-handle it,
-> causing shape errors or wrong dynamic axes. Optimum handles this correctly.
+> ONNX export is **skipped**. The model is exported in HuggingFace safetensors format for
+> local CPU inference with `transformers` + `torch`. PyTorch native INT8 dynamic
+> quantization is attempted, but only kept if it preserves ranking (AUC); otherwise the
+> cell ships full-precision fp32. Exact per-sample probabilities are expected to shift
+> after dynamic quantization, so max-abs-diff is reported but is not the acceptance test.
 
 ```python
-import onnxruntime as ort_rt
-from onnxruntime.quantization import quantize_dynamic, QuantType
-
-# ── Step 1: Save fine-tuned model to disk (if not already saved) ─────────────
-model_dir = os.path.join(MODELS, "document-roberta")
-# (already saved at end of Cell 6; ensure config has correct labels)
-model.config.save_pretrained(model_dir)
+# ── Step 1: Ensure model is on CPU and labels are correct ────────────────────
+model_cpu = model.to("cpu").eval()
+model_dir  = os.path.join(MODELS, "document-roberta")
+model_cpu.config.id2label = {0: "human", 1: "ai"}
+model_cpu.config.label2id = {"human": 0, "ai": 1}
+model_cpu.save_pretrained(model_dir)        # writes model.safetensors
 tok.save_pretrained(model_dir)
+print("Full-precision model saved to:", model_dir)
 
-# ── Step 2: Export to ONNX via optimum-cli ───────────────────────────────────
-# This correctly handles RoBERTa's (input_ids, attention_mask) signature
-onnx_fp32 = os.path.join(EXPORTS, "document-onnx")
-os.makedirs(onnx_fp32, exist_ok=True)
+# ── Step 2: parity helper + optional INT8 dynamic quantization ───────────────
+# INT8 changes individual probabilities; only keep it if the ranking (AUC) survives.
+# Set TRY_INT8 = False to always ship full precision.
+TRY_INT8 = True
 
-import subprocess
-result = subprocess.run(
-    [
-        "optimum-cli", "export", "onnx",
-        "--model", model_dir,
-        "--task", "text-classification",
-        "--opset", "17",
-        onnx_fp32,
-    ],
-    capture_output=True, text=True,
-)
-print(result.stdout[-3000:] if len(result.stdout) > 3000 else result.stdout)
-if result.returncode != 0:
-    print("STDERR:", result.stderr[-2000:])
-    raise RuntimeError("optimum-cli export failed")
+def predict_proba_cpu(texts, mdl, batch=64):
+    mdl.eval()
+    out = []
+    for i in range(0, len(texts), batch):
+        enc = tok(texts[i:i+batch], truncation=True, max_length=MAXLEN,
+                  padding=True, return_tensors="pt")
+        with torch.no_grad():
+            out.append(torch.softmax(mdl(**enc).logits, -1)[:, 1].numpy())
+    return np.concatenate(out)
 
-# ── Step 3: Dynamic INT8 quantization ────────────────────────────────────────
-onnx_q8 = os.path.join(EXPORTS, "document-onnx-q8")
-os.makedirs(onnx_q8, exist_ok=True)
+sample    = val_c.sample(min(200, len(val_c)), random_state=SEED)
+texts     = sample.text.tolist()
+labels    = sample.label.values
+p_fp32    = predict_proba_cpu(texts, model_cpu)
+auc_fp32  = float(roc_auc_score(labels, p_fp32))
 
-quantize_dynamic(
-    model_input=os.path.join(onnx_fp32, "model.onnx"),
-    model_output=os.path.join(onnx_q8, "model_quantized.onnx"),
-    weight_type=QuantType.QInt8,
-)
+q8_dir   = os.path.join(MODELS, "document-roberta-q8")
+model_q8 = None
 
-# ── Step 4: Build the app-folder layout ──────────────────────────────────────
+if TRY_INT8:
+    model_q8  = torch.quantization.quantize_dynamic(
+        model_cpu, {torch.nn.Linear}, dtype=torch.qint8
+    )
+    p_q8      = predict_proba_cpu(texts, model_q8)
+    auc_q8    = float(roc_auc_score(labels, p_q8))
+    max_diff  = float(np.abs(p_fp32 - p_q8).max())
+    mean_diff = float(np.abs(p_fp32 - p_q8).mean())
+    auc_drop  = auc_fp32 - auc_q8
+    print(f"INT8 vs fp32: max diff {max_diff:.4f}, mean diff {mean_diff:.4f}, "
+          f"AUC {auc_fp32:.4f} -> {auc_q8:.4f} (drop {auc_drop:+.4f})")
+    if auc_drop > 0.005:
+        print("INT8 lost more than 0.5 AUC points -> shipping fp32 only.")
+        model_q8 = None
+    else:
+        os.makedirs(q8_dir, exist_ok=True)
+        torch.save(model_q8.state_dict(), os.path.join(q8_dir, "model_q8.pt"))
+        model_cpu.config.save_pretrained(q8_dir)
+        tok.save_pretrained(q8_dir)
+        print("INT8 quantized state_dict saved to:", q8_dir)
+
+# ── Step 3: Build the exports/models/document/ delivery folder ───────────────
 dst = pathlib.Path(os.path.join(EXPORTS, "models/document"))
-(dst / "onnx").mkdir(parents=True, exist_ok=True)
+dst.mkdir(parents=True, exist_ok=True)
 
-model.cpu().config.save_pretrained(dst)
-tok.save_pretrained(dst)
-shutil.copy(os.path.join(onnx_fp32, "model.onnx"),           dst / "onnx/model.onnx")
-shutil.copy(os.path.join(onnx_q8,   "model_quantized.onnx"), dst / "onnx/model_quantized.onnx")
+for p in pathlib.Path(model_dir).iterdir():
+    if p.is_file():
+        shutil.copy(p, dst / p.name)
 
-# ── Step 5: Parity check — ONNX q8 vs PyTorch ────────────────────────────────
-sess = ort_rt.InferenceSession(
-    str(dst / "onnx/model_quantized.onnx"),
-    providers=["CPUExecutionProvider"],
-)
+if model_q8 is not None:
+    shutil.copy(os.path.join(q8_dir, "model_q8.pt"), dst / "model_q8.pt")
+print("Delivery folder:", dst)
 
-def ort_proba(texts):
-    # return_tensors="np" avoids a pt→np copy on CPU
-    enc = tok(texts, truncation=True, max_length=MAXLEN, padding=True, return_tensors="np")
-    logits = sess.run(
-        ["logits"],
-        {"input_ids": enc["input_ids"], "attention_mask": enc["attention_mask"]},
-    )[0]
-    e = np.exp(logits - logits.max(axis=-1, keepdims=True))
-    return (e / e.sum(axis=-1, keepdims=True))[:, 1]
-
-model.to("cuda")
-s    = val_c.sample(min(200, len(val_c)), random_state=SEED).text.tolist()
-diff = float(np.abs(ort_proba(s) - predict_proba(s)).max())
-print("max abs diff:", diff)
-assert diff < 0.03, f"ONNX parity failed (diff={diff:.4f})"
-
-# ── Step 6: Sanity-check output files ────────────────────────────────────────
-for rel in ["config.json", "tokenizer.json", "onnx/model.onnx", "onnx/model_quantized.onnx"]:
-    p = os.path.join(EXPORTS, "models/document", rel)
-    print(rel, os.path.exists(p), os.path.getsize(p) if os.path.exists(p) else 0)
+# ── Step 4: Sanity-check output files ────────────────────────────────────────
+required = ["config.json", "tokenizer.json", "model.safetensors"]
+optional = ["model_q8.pt"] if model_q8 is not None else []
+for rel in required + optional:
+    p = dst / rel
+    assert p.exists(), f"missing {rel}"
+    print(rel, p.exists(), p.stat().st_size)
+print("Shipped:", "fp32 + INT8" if model_q8 is not None else "fp32 only")
 ```
 
 ---
@@ -601,6 +601,46 @@ print("meta contents:", json.load(open(os.path.join(EXPORTS, "models/meta/docume
 
 ---
 
+## How to load locally on your laptop
+
+```python
+# Install once:  pip install transformers torch
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch, numpy as np
+
+MODEL_DIR = "/path/to/exports/models/document"   # copy folder from Google Drive
+
+tok   = AutoTokenizer.from_pretrained(MODEL_DIR)
+model = AutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
+model.eval()
+
+# To load the INT8 quantized version instead (faster on CPU):
+# model_q8 = torch.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
+# model_q8.load_state_dict(torch.load(f"{MODEL_DIR}/model_q8.pt", map_location="cpu"))
+# model_q8.eval()
+
+MAXLEN = 256
+
+def predict_proba(texts, batch=32):
+    out = []
+    for i in range(0, len(texts), batch):
+        enc = tok(texts[i:i+batch], truncation=True, max_length=MAXLEN,
+                  padding=True, return_tensors="pt")
+        with torch.inference_mode():
+            out.append(torch.softmax(model(**enc).logits, -1)[:, 1].numpy())
+    return np.concatenate(out)
+```
+
+> [!TIP]
+> `torch.inference_mode()` is faster than `torch.no_grad()` for local inference.
+> For better CPU throughput, set this before importing torch:
+> ```python
+> import os; os.environ["OMP_NUM_THREADS"] = "4"  # match your physical core count
+> import torch
+> ```
+
+---
+
 > B7 (Binoculars) is optional and needs a much larger GPU; it is not included here.
 
 ---
@@ -611,9 +651,11 @@ print("meta contents:", json.load(open(os.path.join(EXPORTS, "models/meta/docume
 |---|---|---|
 | Wrong `eval_strategy` kwarg | `evaluation_strategy="epoch"` | `eval_strategy="epoch"` |
 | Deprecated `tokenizer=` in Trainer | `tokenizer=tok` | `processing_class=tok` |
-| `torch.onnx.export` RoBERTa token_type_ids crash | `torch.onnx.export(model, (input_ids, attn_mask), ...)` | `optimum-cli export onnx` via subprocess |
+| ONNX export → replaced with PyTorch | `optimum-cli export onnx` + onnxruntime | PyTorch safetensors + optional `quantize_dynamic` for local CPU |
 | Hardcoded Python 3.13 path in Cell 0 | `/usr/local/lib/python3.13/dist-packages/` | Dynamically detected via `sys.version_info` |
-| `fsspec` version pinned too far in future | `fsspec==2025.12.0` (not released/unstable) | Colab pre-installs a working version — leave untouched |
-| Overly new `transformers==5.22.1` | Many internal API renames, unstable on Colab | `transformers==4.47.1` (last stable 4.x) |
-| `optimum` import split | `from optimum.onnxruntime import ORTQuantizer` (needs separate install) | `onnxruntime.quantization.quantize_dynamic` direct + `optimum-cli` for export |
-| Downgrading `pyarrow` to `<18` | Colab has 23.x pre-compiled; pip falls back to building from source → crash | Don't touch `pyarrow`, `pandas`, `datasets`, `fsspec` at all in Cell 0 |
+| `fsspec` version conflict | Downgrading caused build failures | Leave Colab's pre-installed fsspec untouched |
+| Overly new `transformers==5.22.1` | Many internal API renames | `transformers==4.47.1` (last stable 4.x) |
+| Explicit `onnx`/`onnxruntime` pins | No pre-built wheels → source build crash | No longer needed — ONNX export dropped |
+| Downgrading `pyarrow` to `<18` | Colab pre-compiles 23.x; downgrade → crash | Don't touch `pyarrow`, `pandas`, `datasets`, `fsspec` in Cell 0 |
+| HC3 loading script removed in datasets 4.x | `load_dataset("HC3")` → RuntimeError | `hf_hub_download` each JSONL + `json.loads()` directly |
+| HC3 schema mismatch across domain files | `load_dataset("json", data_files=[...])` → CastError | Parse with plain `json` module per file |

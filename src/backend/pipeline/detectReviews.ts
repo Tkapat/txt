@@ -11,8 +11,7 @@ import {
 } from "@/shared/constants";
 import { ApiError } from "@/backend/http/errors";
 import { countWords, normalizeText } from "@/backend/text";
-import { loadJson, type ModelMeta } from "@/backend/model/meta";
-import { requireModel } from "@/backend/model/registry";
+import { getReviewMeta, requireModel } from "@/backend/model/registry";
 import { toVerdict } from "@/backend/detector/verdict";
 import { estimatePrevalence } from "@/backend/analyzers/prevalence";
 import { groupSignals } from "@/backend/analyzers/groupSimilarity";
@@ -41,7 +40,7 @@ export async function detectReviews(
   }
 
   await requireModel("review");
-  const meta = await loadJson<ModelMeta>("review-meta");
+  const meta = await getReviewMeta();
   const items = input.map((review, index) => ({
     id: review.id ?? String(index + 1),
     text: normalizeText(review.text),

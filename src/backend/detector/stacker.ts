@@ -18,3 +18,11 @@ export function stackProbWith(
 export async function stackProb(pBert: number, pFeat: number): Promise<number> {
   return stackProbWith(await loadJson<StackerFile>("stacker"), pBert, pFeat);
 }
+
+export async function loadStackerOrNull(): Promise<StackerFile | null> {
+  try {
+    return await loadJson<StackerFile>("stacker");
+  } catch {
+    return null;
+  }
+}

@@ -56,9 +56,7 @@ export function ReviewRow({ review }: ReviewRowProps) {
                 background:
                   review.verdict === "likely_ai"
                     ? "var(--stamp-red)"
-                    : review.verdict === "uncertain"
-                      ? "var(--stamp-amber)"
-                      : "var(--stamp-green)",
+                    : "var(--stamp-green)",
               }}
             />
           </div>
@@ -89,9 +87,7 @@ export function ReviewRow({ review }: ReviewRowProps) {
             color:
               review.verdict === "likely_ai"
                 ? "var(--stamp-red)"
-                : review.verdict === "uncertain"
-                  ? "var(--stamp-amber)"
-                  : "var(--stamp-green)",
+                : "var(--stamp-green)",
           }}
         >
           {stampText(review.verdict)}

@@ -1,0 +1,11 @@
+{
+  "version": "document-v1",
+  "max_tokens": 256,
+  "chunk": { "words": 160, "stride": 120, "min_words": 60 },
+  "thresholds": {
+    "low": 0.00019910391711164266,
+    "high": 0.9962259531021118
+  },
+  "sensitivity_unseen": 0.9850839030453697,
+  "specificity": 0.9800055284253202
+}

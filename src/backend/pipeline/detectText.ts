@@ -11,12 +11,11 @@ import {
 } from "@/shared/constants";
 import { ApiError } from "@/backend/http/errors";
 import { normalizeText, countWords } from "@/backend/text";
-import { loadJson, type ModelMeta } from "@/backend/model/meta";
-import { requireModel } from "@/backend/model/registry";
+import { getReviewMeta, requireModel } from "@/backend/model/registry";
 import { extractFeatures } from "@/backend/detector/features";
 import { scoreReviewTexts } from "@/backend/detector/score";
 import { toConfidence, toVerdict } from "@/backend/detector/verdict";
-import type { Sty } from "@/backend/detector/stylometric";
+import { loadStylometricOrNull } from "@/backend/detector/stylometric";
 import { topCues } from "@/backend/explain/cues";
 import { topEvidence } from "@/backend/explain/evidence";
 import { scoreAsDocument } from "./detectDocument";
@@ -26,9 +25,8 @@ async function scoreAsReview(
   wordCount: number,
   warnings: Warning[],
 ): Promise<TextResult> {
-  const meta = await loadJson<ModelMeta>("review-meta");
-  const stylometric = await loadJson<Sty>("stylometric");
-  const features = extractFeatures(text);
+  const meta = await getReviewMeta();
+  const stylometric = await loadStylometricOrNull();
   const [aiProbability] = await scoreReviewTexts([text]);
 
   return {
@@ -43,7 +41,13 @@ async function scoreAsReview(
       aiProbability >= meta.thresholds.low
         ? await topEvidence(text, scoreReviewTexts)
         : [],
-    cues: topCues(features, stylometric.human_mean, stylometric.human_std),
+    cues: stylometric
+      ? topCues(
+          extractFeatures(text),
+          stylometric.human_mean,
+          stylometric.human_std,
+        )
+      : [],
   };
 }
 
