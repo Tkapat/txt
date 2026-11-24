@@ -1,0 +1,48 @@
+/* Design tokens — txt: a reading desk */
+:root {
+  /* surfaces */
+  --desk: #e8e0cf;
+  --paper: #f6f1e6;
+  --paper-edge: #eae2d0;
+
+  /* ink */
+  --ink: #1c1a17;
+  --ink-soft: #4f4a43;
+  --ink-faint: #8a8377;
+  --rule: #d9d0bd;
+
+  /* signal inks */
+  --stamp-red: #9b2d26;
+  --stamp-green: #2f5d50;
+  --stamp-amber: #8a6a1f;
+  --marker: #f2d45c;
+  --pen-blue: #2b4a7a;
+
+  /* type */
+  --font-display: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
+  --font-text: var(--font-newsreader), Georgia, serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --font-hand: var(--font-caveat), "Segoe Script", cursive;
+
+  /* fluid scale */
+  --fs-hero: clamp(2.6rem, 2rem + 3vw, 4.6rem);
+  --fs-h2: clamp(1.6rem, 1.3rem + 1.2vw, 2.3rem);
+  --fs-body: clamp(1.05rem, 1rem + 0.2vw, 1.2rem);
+  --fs-small: 0.875rem;
+  --fs-label: 0.75rem;
+
+  /* space — 8px base */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 16px;
+  --s4: 24px;
+  --s5: 40px;
+  --s6: 64px;
+
+  /* shape */
+  --radius: 2px;
+  --sheet-w: 880px;
+  --shadow-sheet: 0 1px 0 rgba(0, 0, 0, 0.04),
+    0 14px 28px -14px rgba(60, 45, 20, 0.28),
+    0 3px 8px rgba(60, 45, 20, 0.1);
+}

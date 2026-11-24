@@ -1,0 +1,200 @@
+/* CSS animations for txt — no GSAP dependency */
+
+/* Sheet intro */
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(40px) rotate(0.8deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(0);
+  }
+}
+
+/* Fade up */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Rule draw in from left */
+@keyframes rule-draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Stamp thump */
+@keyframes stamp-thump {
+  0% {
+    opacity: 0;
+    transform: scale(1.8) rotate(-12deg);
+  }
+  70% {
+    opacity: 0.92;
+    transform: scale(0.95) rotate(-3deg);
+  }
+  100% {
+    opacity: 0.92;
+    transform: scale(1) rotate(-4deg);
+  }
+}
+
+/* Sheet bounce when stamp lands */
+@keyframes sheet-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+/* Highlight sweep */
+@keyframes highlight-sweep {
+  from {
+    background-size: 0% 100%;
+  }
+  to {
+    background-size: 100% 100%;
+  }
+}
+
+/* Count-up pulse */
+@keyframes count-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Ink loader — a line writing itself */
+@keyframes ink-draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes ink-draw-reverse {
+  from {
+    transform-origin: right;
+    transform: scaleX(1);
+  }
+  to {
+    transform-origin: right;
+    transform: scaleX(0);
+  }
+}
+
+/* Scroll reveal */
+@keyframes scroll-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Fade in */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* File drag tilt */
+@keyframes drag-tilt {
+  to {
+    transform: rotate(1deg);
+  }
+}
+
+/* Utility classes */
+.animate-sheet-in {
+  animation: sheet-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-up {
+  animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-rule-draw {
+  animation: rule-draw 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: left;
+}
+
+.animate-stamp-thump {
+  animation: stamp-thump 0.4s cubic-bezier(0.68, -0.6, 0.32, 1.6) both;
+}
+
+.animate-sheet-bounce {
+  animation: sheet-bounce 0.15s ease 0.3s both;
+}
+
+.animate-highlight-sweep {
+  animation: highlight-sweep 0.7s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+
+.animate-scroll-reveal {
+  animation: scroll-reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease both;
+}
+
+/* Stagger delays */
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+.delay-4 { animation-delay: 0.4s; }
+.delay-5 { animation-delay: 0.5s; }
+.delay-6 { animation-delay: 0.6s; }
+.delay-7 { animation-delay: 0.7s; }
+
+/* Reduced motion: keep content visible, remove movement */
+@media (prefers-reduced-motion: reduce) {
+  .animate-sheet-in,
+  .animate-fade-up,
+  .animate-rule-draw,
+  .animate-stamp-thump,
+  .animate-sheet-bounce,
+  .animate-highlight-sweep,
+  .animate-scroll-reveal,
+  .animate-fade-in {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    clip-path: none !important;
+    background-size: 100% 100% !important;
+  }
+
+  .stamp {
+    transform: rotate(-4deg) !important;
+  }
+}

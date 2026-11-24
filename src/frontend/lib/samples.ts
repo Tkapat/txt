@@ -1,0 +1,5 @@
+/** Sample texts for the "Try a sample" feature. */
+
+export const SAMPLE_HUMAN = `I bought this moisturizer after seeing it recommended on a skincare forum. It's nothing fancy - no amazing smell or luxurious texture - but my dry patches around my nose and chin cleared up within about a week. I've been using it for three months now and it hasn't broken me out, which is rare for me. Only downside is the pump sometimes sticks. Would repurchase.`;
+
+export const SAMPLE_AI = `This moisturizer is an outstanding skincare essential that delivers exceptional results. The lightweight formula absorbs quickly into the skin without leaving any greasy residue. It provides deep hydration that lasts throughout the entire day, keeping your skin feeling soft, smooth, and supple. The elegant packaging adds a touch of luxury to your daily skincare routine. Whether you have dry, oily, or combination skin, this versatile product adapts perfectly to your needs. Highly recommended for anyone seeking a premium moisturizing experience.`;

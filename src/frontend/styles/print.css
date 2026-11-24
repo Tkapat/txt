@@ -1,0 +1,59 @@
+/* Print stylesheet: clean one-page report */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt !important;
+  }
+
+  .sheet {
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    background-image: none !important;
+  }
+
+  .sheet::before {
+    display: none !important;
+  }
+
+  /* Hide interactive elements */
+  .masthead,
+  .footer,
+  .btn-primary,
+  .btn-secondary,
+  .mode-tabs,
+  .file-drop,
+  .sample-chips,
+  textarea,
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  /* Keep the stamp, evidence and figures */
+  .stamp {
+    filter: none !important;
+    mix-blend-mode: normal !important;
+    border-color: currentColor !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .hl {
+    text-decoration: underline !important;
+    background: none !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .marginalia {
+    color: #2b4a7a !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Page break control */
+  .result-panel {
+    break-inside: avoid;
+  }
+}
