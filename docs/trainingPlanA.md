@@ -1,17 +1,23 @@
-# txt: Model Training Plan (Google Colab)
+# txt: Review Detector Training Plan (Part A, Google Colab)
 
-> Audience: Team A (ML) and any AI coding agent. Follow the steps in order.
-> Output of this plan: two ONNX models + small JSON files that the Next.js backend loads (see `02_BACKEND_PLAN.md`).
+> Audience: Team member A (ML, short-review detector). Follow the steps in order.
+> This plan is self-contained. Part B (long-document detector) is a separate plan for a second team member.
+> Output: `models/review/` plus `models/meta/{stylometric,stacker,review-meta,golden}.json` that the Next.js backend loads.
 
 ## 0. What we are building
 
-| Artifact | Purpose | Trained how |
+| Artifact | Purpose | Owner |
 |---|---|---|
-| `models/review/` | Detects AI-written **short reviews** (15-160 words) | Part A: our own data, DistilBERT + stylometric features + stacker |
-| `models/document/` | Detects AI-written **long text** (PDF/DOCX/TXT) | Part B: pretrained RoBERTa detector, fine-tuned further |
-| `models/meta/*.json` | Weights, thresholds, error rates, golden test vectors | Exported from Colab |
+| `models/review/` | Detects AI-written **short reviews** (15-160 words) | **This plan (Part A)** |
+| `models/meta/review-meta.json` | Thresholds, error rates, chunk settings | This plan |
+| `models/meta/stylometric.json` | Feature scaler + logistic-regression weights | This plan |
+| `models/meta/stacker.json` | Stacker weights | This plan |
+| `models/meta/golden.json` | Backend golden test vectors | This plan |
+| `models/document/` + `models/meta/document-meta.json` | Long-text detector | **Part B (separate plan)** |
 
 Research claim: **how well detectors hold up on AI generators they never saw**, plus an honest evaluation protocol.
+
+Scope: this plan trains only the review model. Do not train or export the document model here.
 
 ## 1. Critical rules (do not skip)
 
@@ -46,9 +52,7 @@ SEED = 42
 random.seed(SEED); np.random.seed(SEED); torch.manual_seed(SEED); torch.cuda.manual_seed_all(SEED)
 ```
 
----
-
-# PART A: Our own AI review detector
+## Part A: Our own AI review detector
 
 ## A1. Data sources
 
@@ -324,7 +328,7 @@ Results table to fill for the report (also check human FPR on informal or non-na
 | Features + XGBoost | | | | | |
 | DistilBERT | | | | | |
 | Stacked (final) | | | | | |
-| HC3 RoBERTa (baseline, Part B) | | | | | |
+| HC3 RoBERTa (baseline, supplied by Part B owner; optional here) | | | | | |
 
 ## A9. Export to ONNX and verify
 
@@ -364,110 +368,28 @@ json.dump({"texts": sample, "features": [extract_features(t) for t in sample],
            "p_bert_q8": ort_proba(sample).tolist()}, open(f"{ROOT}/exports/models/meta/golden.json","w"))
 ```
 
----
-
-# PART B: Modify a pretrained model for large text files
-
-## B1. Candidates
-
-| Model / tool | Link | Use |
-|---|---|---|
-| `Hello-SimpleAI/chatgpt-detector-roberta` (roberta-base trained on HC3 answers) | https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta | **Main starting point.** Weights are a pickle `.bin`: load only from the official repo, then re-save (writes safetensors). |
-| `roberta-base` | https://huggingface.co/FacebookAI/roberta-base | Fallback base. |
-| HC3 dataset + paper | https://huggingface.co/datasets/Hello-SimpleAI/HC3, https://arxiv.org/abs/2301.07597 | Training data (Q&A style, ChatGPT only). |
-| RAID dataset | https://huggingface.co/datasets/liamdugan/raid | Multi-generator, multi-domain data and benchmark (`pip install raid-bench`). Leaderboard: https://raid-bench.xyz |
-| Binoculars (zero-shot, optional) | https://github.com/ahans30/Binoculars, https://arxiv.org/abs/2401.12070 | Optional baseline. Default thresholds use Falcon-7B models, so it needs a big GPU. English-focused. Authors warn against use without human review. |
-
-## B2. Baseline: evaluate the model unmodified
-
-```python
-from transformers import pipeline
-det = pipeline("text-classification", model="Hello-SimpleAI/chatgpt-detector-roberta",
-               truncation=True, max_length=512, top_k=None, device=0)
-print(det.model.config.id2label)   # CHECK which label means ChatGPT; verify on 5 known human + 5 known AI texts
-```
-Score all long-text test chunks (B3) and record AUC, TPR@1%FPR, FPR. This is the "off-the-shelf" row in the paper.
-
-## B3. Build the long-text dataset
-
-```python
-from datasets import load_dataset
-rows = []
-hc3 = load_dataset("Hello-SimpleAI/HC3", "all", split="train")   # if a script error appears: download the jsonl files from the repo's Files tab
-for i, ex in enumerate(hc3):
-    for t in ex["human_answers"]:   rows.append(dict(text=t, label=0, generator="human",   source="hc3_"+ex["source"], doc_id=f"hc3_{i}_h"))
-    for t in ex["chatgpt_answers"]: rows.append(dict(text=t, label=1, generator="chatgpt", source="hc3_"+ex["source"], doc_id=f"hc3_{i}_c"))
-
-DOMAINS = {"abstracts","books","news","reddit","wiki","recipes"}
-raid = (load_dataset("liamdugan/raid", "raid", split="train", streaming=True)
-        .shuffle(seed=SEED, buffer_size=50_000)
-        .filter(lambda ex: ex["attack"]=="none" and ex["domain"] in DOMAINS))
-for ex in raid.take(60_000):
-    rows.append(dict(text=ex["generation"], label=0 if ex["model"]=="human" else 1,    # verify how human rows are named
-                     generator=ex["model"], source="raid_"+ex["domain"], doc_id=ex["id"]))
-```
-
-Hold out for testing: generators `gpt4`, `cohere-chat`, `mpt-chat` and domain `recipes`. Train on the rest. Split by `doc_id` so chunks of one document never cross splits.
-
-```python
-def chunk_words(text, size=160, stride=120, min_words=60):
-    w = text.split(); out = []
-    for s in range(0, max(1, len(w)), stride):
-        c = w[s:s+size]
-        if len(c) >= min_words or (s == 0 and len(c) >= 30): out.append(" ".join(c))
-        if s + size >= len(w): break
-    return out
-```
-Expand each document into chunks (inherit label, generator, `doc_id`). Balance classes. Cap per generator and domain so ChatGPT/HC3 does not dominate.
-
-## B4. Fine-tune
-
-```python
-BASE = "Hello-SimpleAI/chatgpt-detector-roberta"
-model = AutoModelForSequenceClassification.from_pretrained(BASE)
-print(model.config.id2label)
-# ONLY if label 0 = human and label 1 = ChatGPT (verified!):
-model.config.id2label = {0:"human", 1:"ai"}; model.config.label2id = {"human":0, "ai":1}
-tok = AutoTokenizer.from_pretrained(BASE)
-```
-Reuse the A7 `Trainer` setup with these changes: `learning_rate=1e-5`, `num_train_epochs=2`, `per_device_train_batch_size=16`, `MAXLEN=256`, output `models/document-roberta`. A lower learning rate keeps what the model already knows and adapts it to the new generators and domains.
-
-Evaluate on: held-out chunks, held-out generators, held-out domain, and (document level) the share of flagged chunks per document. Compare against the B2 baseline.
-
-## B5. Document-level logic (implemented in the backend, tuned here)
-
-Document score = mean of chunk probabilities. Also report `flaggedShare` = fraction of chunks above `tau_high`. Choose `tau_high` on validation chunks (FPR ≤ 2%). Compute `sensitivity_unseen` and `specificity` as in A8 and save `document-meta.json` with the same schema as `review-meta.json` (no stacker, no stylometric part).
-
-## B6. Export
-
-Use the same export and `build_model_dir(...)` code as A9, output `exports/models/document/`. Run the parity check there too.
-
-## B7. Optional: Binoculars baseline
-Run only if a high-memory GPU is available. Score 500 chunks from each test set and add a row to the results table. Do not put it in the app.
-
----
-
 ## 3. Deliverables checklist (hand off to backend team)
 
 ```
 exports/models/
 ├── review/          # HF layout + onnx/model.onnx + onnx/model_quantized.onnx
-├── document/        # same layout
 └── meta/
     ├── review-meta.json
-    ├── document-meta.json
     ├── stylometric.json
     ├── stacker.json
     └── golden.json
 ```
 
 - [ ] Leakage check passed (A4)
-- [ ] ONNX parity check passed for both models
-- [ ] `golden.json` generated from the final models
-- [ ] Results tables (A8) complete with unseen-generator numbers
+- [ ] ONNX parity check passed for the review model (A9)
+- [ ] `golden.json` generated from the final review model
+- [ ] Results table (A8) complete with unseen-generator numbers
 - [ ] Notebook(s) committed to `ml/notebooks/`, with the seed and library versions printed in the first cell
 - [ ] Known limitations written up: English only, short text is unreliable, possible bias against non-native writers, "AI-written" is not the same as "fake"
+- [ ] Handoff note: `models/document/` and `models/meta/document-meta.json` are Part B deliverables and are not produced here.
 
 ## 4. Link status
 
 Checked in the Amazon Reviews 2023, HC3, RAID and Binoculars pages while planning. Verify the rest (Yelp, OpSpam, Optimum docs) yourself before relying on them. Check dataset and model licenses before redistributing anything.
+
+Part B links are listed in the Part B plan.
