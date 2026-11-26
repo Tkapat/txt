@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { DeskLayer } from "@/frontend/components/art/DeskLayer";
+import { DeskIntro } from "./DeskIntro";
 
 interface PageShellProps {
   children: ReactNode;
@@ -8,9 +10,11 @@ interface PageShellProps {
 export function PageShell({ children, className }: PageShellProps) {
   return (
     <main
-      className={`flex-1 px-4 py-8 md:px-6 md:py-12 ${className ?? ""}`}
-      style={{ background: "var(--desk)" }}
+      data-page-shell
+      className={`page-shell flex-1 px-4 py-8 md:px-6 md:py-12 ${className ?? ""}`}
     >
+      <DeskLayer />
+      <DeskIntro />
       {children}
     </main>
   );

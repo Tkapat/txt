@@ -1,3 +1,5 @@
+import { Fragment } from "react";
+import { PageShell } from "@/frontend/components/layout/PageShell";
 import { PaperSheet } from "@/frontend/components/paper/PaperSheet";
 import { RuleLine } from "@/frontend/components/paper/RuleLine";
 
@@ -30,9 +32,13 @@ const SECTIONS = [
 
 export default function MethodPage() {
   return (
-    <PaperSheet>
-      {/* Hero */}
-      <div className="mb-6 animate-fade-up">
+    <PageShell>
+      <PaperSheet clip="tl">
+        {/* Hero */}
+      <div
+        className="mb-6 animate-fade-up"
+        style={{ paddingTop: "var(--s5)" }}
+      >
         <h1
           style={{
             fontFamily: "var(--font-display)",
@@ -63,53 +69,62 @@ export default function MethodPage() {
       {/* Sections */}
       <div className="flex flex-col gap-10">
         {SECTIONS.map((section, i) => (
-          <section
-            key={i}
-            className="animate-fade-up"
-            style={{ animationDelay: `${0.1 + i * 0.1}s` }}
-          >
-            <h2
-              className="mb-3"
-              style={{
-                fontFamily: "var(--font-display)",
-                fontSize: "clamp(1.2rem, 1rem + 0.5vw, 1.5rem)",
-                fontWeight: 400,
-                color: "var(--ink)",
-                margin: 0,
-              }}
+          <Fragment key={i}>
+            <section
+              className="animate-fade-up"
+              style={{ animationDelay: `${0.1 + i * 0.1}s` }}
             >
-              {section.title}
-            </h2>
-            <div
-              style={{
-                fontFamily: "var(--font-text)",
-                fontSize: "var(--fs-body)",
-                color: "var(--ink-soft)",
-                lineHeight: 1.7,
-                maxWidth: "68ch",
-              }}
-            >
-              {section.content.split("\n\n").map((para, j) => {
-                // Handle bold markdown
-                const parts = para.split(/\*\*(.*?)\*\*/g);
-                return (
-                  <p key={j} className="mb-3 last:mb-0" style={{ margin: 0, marginBottom: j < section.content.split("\n\n").length - 1 ? "12px" : 0 }}>
-                    {parts.map((part, k) =>
-                      k % 2 === 1 ? (
-                        <strong key={k} style={{ color: "var(--ink)", fontWeight: 500 }}>
-                          {part}
-                        </strong>
-                      ) : (
-                        <span key={k}>{part}</span>
-                      ),
-                    )}
-                  </p>
-                );
-              })}
-            </div>
-          </section>
+              <span
+                className="mono-label"
+                style={{ display: "block", marginBottom: "var(--s2)" }}
+              >
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <h2
+                className="mb-3"
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontSize: "clamp(1.2rem, 1rem + 0.5vw, 1.5rem)",
+                  fontWeight: 400,
+                  color: "var(--ink)",
+                  margin: 0,
+                }}
+              >
+                {section.title}
+              </h2>
+              <div
+                style={{
+                  fontFamily: "var(--font-text)",
+                  fontSize: "var(--fs-body)",
+                  color: "var(--ink-soft)",
+                  lineHeight: 1.7,
+                  maxWidth: "68ch",
+                }}
+              >
+                {section.content.split("\n\n").map((para, j) => {
+                  // Handle bold markdown
+                  const parts = para.split(/\*\*(.*?)\*\*/g);
+                  return (
+                    <p key={j} className="mb-3 last:mb-0" style={{ margin: 0, marginBottom: j < section.content.split("\n\n").length - 1 ? "12px" : 0 }}>
+                      {parts.map((part, k) =>
+                        k % 2 === 1 ? (
+                          <strong key={k} style={{ color: "var(--ink)", fontWeight: 500 }}>
+                            {part}
+                          </strong>
+                        ) : (
+                          <span key={k}>{part}</span>
+                        ),
+                      )}
+                    </p>
+                  );
+                })}
+              </div>
+            </section>
+            {i < SECTIONS.length - 1 && <RuleLine />}
+          </Fragment>
         ))}
       </div>
     </PaperSheet>
+    </PageShell>
   );
 }

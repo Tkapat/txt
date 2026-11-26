@@ -1,6 +1,21 @@
 /* Paper look — CSS only */
 body {
-  background: var(--desk);
+  background-color: var(--desk);
+  background-image:
+    radial-gradient(
+      ellipse at 50% 25%,
+      rgba(255, 250, 235, 0.55),
+      transparent 62%
+    ),
+    radial-gradient(
+      ellipse at 50% 110%,
+      rgba(90, 70, 40, 0.22),
+      transparent 70%
+    ),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='420'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='.015 .45' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .22  0 0 0 0 .12  0 0 0 .1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23f)'/></svg>"),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .25  0 0 0 0 .18  0 0 0 0 .1  0 0 0 .24 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>");
+  background-size: auto, auto, 420px 420px, 220px 220px;
+  background-attachment: fixed, fixed, scroll, scroll;
   color: var(--ink);
   font-family: var(--font-text);
   font-size: var(--fs-body);
@@ -15,7 +30,7 @@ body {
   background-color: var(--paper);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sheet);
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .2  0 0 0 0 .15  0 0 0 0 .1  0 0 0 .07 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .2  0 0 0 0 .15  0 0 0 0 .1  0 0 0 .1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 }
 
 .sheet::before {

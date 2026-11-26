@@ -18,6 +18,12 @@
   --marker: #f2d45c;
   --pen-blue: #2b4a7a;
 
+  /* art — decoration only, never a signal */
+  --spot: #f0a92e; /* saffron highlighter */
+  --graphite: #3a3733; /* pencil sketch tone (reference) */
+  --clip: #2a2723;
+  --clip-shadow: rgba(40, 30, 15, 0.28);
+
   /* type */
   --font-display: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
   --font-text: var(--font-newsreader), Georgia, serif;
@@ -42,6 +48,7 @@
   /* shape */
   --radius: 2px;
   --sheet-w: 880px;
+  --sheet-half: calc(min(var(--sheet-w), 100vw - 48px) / 2);
   --shadow-sheet: 0 1px 0 rgba(0, 0, 0, 0.04),
     0 14px 28px -14px rgba(60, 45, 20, 0.28),
     0 3px 8px rgba(60, 45, 20, 0.1);

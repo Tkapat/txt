@@ -1,6 +1,7 @@
 "use client";
 
 import { useReviewsReport } from "@/frontend/hooks/useReviewsReport";
+import { PageShell } from "@/frontend/components/layout/PageShell";
 import { PaperSheet } from "@/frontend/components/paper/PaperSheet";
 import { RuleLine } from "@/frontend/components/paper/RuleLine";
 import { ReviewsInput } from "@/frontend/components/reviews/ReviewsInput";
@@ -22,8 +23,8 @@ export default function ReviewsPage() {
   }
 
   return (
-    <>
-      <PaperSheet>
+    <PageShell>
+      <PaperSheet clip="tr">
         {/* Hero */}
         <div className="mb-6 animate-fade-up">
           <h1
@@ -77,6 +78,6 @@ export default function ReviewsPage() {
       {state.status === "success" && (
         <ReviewsReportView report={state.report} />
       )}
-    </>
+    </PageShell>
   );
 }

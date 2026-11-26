@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { fraunces, newsreader, plexMono, caveat } from "./fonts";
 import { Masthead } from "@/frontend/components/layout/Masthead";
 import { Footer } from "@/frontend/components/layout/Footer";
-import { PageShell } from "@/frontend/components/layout/PageShell";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -42,9 +41,9 @@ export default function RootLayout({
             />
           </filter>
         </svg>
-        <div className="flex flex-col min-h-screen" style={{ background: "var(--desk)" }}>
+        <div className="flex flex-col min-h-screen">
           <Masthead />
-          <PageShell>{children}</PageShell>
+          {children}
           <Footer />
         </div>
       </body>

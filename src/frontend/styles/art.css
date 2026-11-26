@@ -1,0 +1,179 @@
+/* Desk layer: transparent stickers and pencil sketches on the desk.
+   Decoration only — never interactive, never on the sheet (except the clip). */
+
+/* The sheet scrolls over a desk that stays fixed to the viewport.
+   z-index -1 keeps the desk above the grain and below masthead/footer text,
+   the sheet and the sheet's paper-edge pseudo (all painted later). */
+.desk-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.desk-item {
+  position: absolute;
+  top: calc(var(--top) * 1vh);
+  width: calc(var(--w) * 1px);
+  rotate: calc(var(--rot) * 1deg);
+  display: none;
+}
+
+.desk-item img {
+  width: 100%;
+  height: auto;
+  display: block;
+  user-select: none;
+}
+
+.desk-item[data-side="l"] {
+  left: calc(50% - var(--sheet-half) - var(--w) * 1px + var(--tuck) * 1px);
+}
+
+.desk-item[data-side="r"] {
+  left: calc(50% + var(--sheet-half) - var(--tuck) * 1px);
+}
+
+.desk-item[data-kind="sticker"] img {
+  filter: drop-shadow(0 2px 3px rgba(60, 45, 20, 0.22));
+}
+
+.desk-item[data-kind="sketch"] img {
+  mix-blend-mode: multiply;
+  opacity: 0.8;
+}
+
+/* Saffron washi tape on a sketch corner */
+.desk-item[data-tape="true"]::after {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  width: 84px;
+  height: 24px;
+  margin-left: -42px;
+  rotate: -16deg;
+  background: var(--spot);
+  opacity: 0.88;
+  mix-blend-mode: multiply;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    98% 20%,
+    100% 40%,
+    98% 60%,
+    100% 80%,
+    98% 100%,
+    0 100%,
+    2% 80%,
+    0 60%,
+    2% 40%,
+    0 20%
+  );
+}
+
+/* The sheet sits above the desk (tree order is enough: both are positioned). */
+.page-shell {
+  position: relative;
+}
+
+/* Tiers: only show what fits the gutters */
+@media (min-width: 1024px) {
+  .desk-item[data-tier="m"] {
+    display: block;
+  }
+}
+
+@media (min-width: 1280px) {
+  .desk-item[data-tier="l"] {
+    display: block;
+  }
+}
+
+/* Paperclip — the only object on the sheet */
+.clip {
+  position: absolute;
+  top: -18px;
+  width: 34px;
+  height: 86px;
+  z-index: 2;
+  pointer-events: none;
+  color: var(--clip);
+  filter: drop-shadow(0 1px 1px var(--clip-shadow));
+}
+
+.clip[data-corner="tr"] {
+  right: 48px;
+  rotate: 6deg;
+}
+
+.clip[data-corner="tl"] {
+  left: 48px;
+  rotate: -6deg;
+}
+
+@media (max-width: 767px) {
+  .clip {
+    width: 26px;
+    height: 66px;
+  }
+
+  .clip[data-corner="tr"] {
+    right: 24px;
+  }
+
+  .clip[data-corner="tl"] {
+    left: 24px;
+  }
+}
+
+/* Hero highlighter swipe */
+.hero-key {
+  position: relative;
+  display: inline-block;
+  z-index: 0;
+}
+
+.swipe {
+  position: absolute;
+  z-index: -1;
+  left: -0.06em;
+  right: -0.1em;
+  bottom: 0.08em;
+  height: 0.45em;
+  background: var(--spot);
+  mix-blend-mode: multiply;
+  opacity: 0.9;
+  transform-origin: left center;
+  clip-path: polygon(0 22%, 100% 0, 97% 86%, 3% 100%);
+}
+
+/* Active tab swipe (the sliding underline element) */
+.tab-underline {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 5px;
+  background: var(--spot);
+  mix-blend-mode: multiply;
+  clip-path: polygon(0 30%, 100% 0, 100% 80%, 0 100%);
+  transition:
+    transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    width 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-underline {
+    transition: none;
+  }
+}
+
+@media print {
+  .desk-layer,
+  .clip,
+  .swipe,
+  .tab-underline {
+    display: none !important;
+  }
+}

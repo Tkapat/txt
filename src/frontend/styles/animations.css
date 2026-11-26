@@ -1,4 +1,4 @@
-/* CSS animations for txt — no GSAP dependency */
+/* CSS keyframe animations for txt (intro, stamp, loader, reveal). */
 
 /* Sheet intro */
 @keyframes sheet-in {

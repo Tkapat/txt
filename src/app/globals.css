@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "../frontend/styles/tokens.css";
 @import "../frontend/styles/paper.css";
+@import "../frontend/styles/art.css";
 @import "../frontend/styles/animations.css";
 @import "../frontend/styles/print.css";
 

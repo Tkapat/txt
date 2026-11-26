@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDetect } from "@/frontend/hooks/useDetect";
+import { PageShell } from "@/frontend/components/layout/PageShell";
 import { PaperSheet } from "@/frontend/components/paper/PaperSheet";
 import { RuleLine } from "@/frontend/components/paper/RuleLine";
 import { ModeTabs } from "@/frontend/components/input/ModeTabs";
@@ -48,8 +49,8 @@ export default function WorkbenchPage() {
   }
 
   return (
-    <>
-      <PaperSheet>
+    <PageShell>
+      <PaperSheet clip="tr">
         {/* Hero */}
         <div className="mb-6 animate-fade-up">
           <h1
@@ -63,7 +64,10 @@ export default function WorkbenchPage() {
             }}
           >
             Read between the{" "}
-            <em style={{ fontStyle: "italic" }}>lines.</em>
+            <em className="hero-key" style={{ fontStyle: "italic" }}>
+              lines.
+              <span className="swipe" aria-hidden="true" />
+            </em>
           </h1>
         </div>
 
@@ -110,6 +114,6 @@ export default function WorkbenchPage() {
       {state.status === "success" && (
         <ResultPanel result={state.result} inputText={state.input} />
       )}
-    </>
+    </PageShell>
   );
 }

@@ -7,7 +7,7 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
-      className="flex items-center justify-center py-12 text-center"
+      className="py-12 text-center"
       style={{
         fontFamily: "var(--font-text)",
         fontStyle: "italic",
@@ -15,7 +15,7 @@ export function EmptyState({
         fontSize: "var(--fs-body)",
       }}
     >
-      <p className="m-0 max-w-md">{message}</p>
+      <p className="m-0 max-w-md mx-auto">{message}</p>
     </div>
   );
 }
