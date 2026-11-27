@@ -74,6 +74,6 @@ export const api = {
       s,
     ),
 
-  detectReviewsCsv: (file: File, s?: AbortSignal) =>
+  detectReviewsFile: (file: File, s?: AbortSignal) =>
     request<ReviewsReport>("/api/detect/reviews", form(file), s),
 };

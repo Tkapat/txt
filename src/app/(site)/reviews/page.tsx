@@ -11,15 +11,15 @@ import { ErrorNote } from "@/frontend/components/feedback/ErrorNote";
 import type { ReviewInput } from "@/shared/types";
 
 export default function ReviewsPage() {
-  const { state, runJson, runCsv, reset } = useReviewsReport();
+  const { state, runJson, runFile, reset } = useReviewsReport();
   const isLoading = state.status === "loading";
 
   function handleSubmitText(reviews: ReviewInput[]) {
     runJson(reviews);
   }
 
-  function handleSubmitCsv(file: File) {
-    runCsv(file);
+  function handleSubmitFile(file: File) {
+    runFile(file);
   }
 
   return (
@@ -47,8 +47,8 @@ export default function ReviewsPage() {
               maxWidth: "55ch",
             }}
           >
-            Paste product reviews or upload a CSV to estimate how many look
-            AI-written. The percentage is adjusted for detector accuracy and
+            Paste product reviews or upload a CSV or XLSX to estimate how many
+            look AI-written. The percentage is adjusted for detector accuracy and
             shown with a range.
           </p>
         </div>
@@ -57,7 +57,7 @@ export default function ReviewsPage() {
 
         <ReviewsInput
           onSubmitText={handleSubmitText}
-          onSubmitCsv={handleSubmitCsv}
+          onSubmitFile={handleSubmitFile}
           disabled={isLoading}
         />
       </PaperSheet>

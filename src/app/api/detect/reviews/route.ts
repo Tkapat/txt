@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       if (!(file instanceof File)) {
         throw new ApiError(
           "bad_request",
-          "Attach a CSV in the 'file' field.",
+          "Attach a CSV or XLSX in the 'file' field.",
           400,
         );
       }
@@ -47,10 +47,10 @@ export async function POST(req: NextRequest) {
 
       const info = { name: file.name, mime: file.type, size: file.size };
       const extractor = pickExtractor(info);
-      if (extractor.id !== "csv") {
+      if (extractor.id !== "csv" && extractor.id !== "xlsx") {
         throw new ApiError(
           "unsupported_type",
-          "Reviews upload must be a .csv file.",
+          "Reviews upload must be a .csv or .xlsx file.",
           415,
         );
       }

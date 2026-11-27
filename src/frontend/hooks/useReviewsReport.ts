@@ -51,12 +51,12 @@ export function useReviewsReport() {
     }
   }, []);
 
-  const runCsv = useCallback(async (file: File) => {
+  const runFile = useCallback(async (file: File) => {
     ctrl.current?.abort();
     ctrl.current = new AbortController();
     dispatch({ type: "start" });
     try {
-      const report = await api.detectReviewsCsv(file, ctrl.current.signal);
+      const report = await api.detectReviewsFile(file, ctrl.current.signal);
       dispatch({ type: "ok", report });
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
@@ -74,5 +74,5 @@ export function useReviewsReport() {
     dispatch({ type: "reset" });
   }, []);
 
-  return { state, runJson, runCsv, reset };
+  return { state, runJson, runFile, reset };
 }

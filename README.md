@@ -117,10 +117,12 @@ pnpm build
 |---|---|---|
 | `POST /api/detect/text` | `{ text: string, model?: "review" \| "document" }` | `TextResult` or `DocumentResult` |
 | `POST /api/detect/file` | multipart `file` (`.txt`, `.md`, `.docx`, `.pdf`) | `DocumentResult` with `source` |
-| `POST /api/detect/reviews` | JSON `{ reviews: ReviewInput[] }` or multipart CSV `file` | `ReviewsReport` |
+| `POST /api/detect/reviews` | JSON `{ reviews: ReviewInput[] }` or multipart `.csv`/`.xlsx` `file` | `ReviewsReport` |
 | `GET /api/health` | none | `{ ok, models, available, ready }` |
 
 Text routes automatically: **≤160 words → review**, **>160 words → document**. `POST /api/detect/file` always uses the document model.
+
+Bulk reviews can be a `.csv` or `.xlsx` file with a `review` column (also accepts `text`, `body`, `content` or `comment`, case-insensitive). An optional `rating` column is carried into the report. For workbooks, the first sheet with a recognised column is used and up to 10 leading rows may precede the header.
 
 Errors use `{ error: { code, message } }` with codes such as `empty_text` (422), `too_large` (413), `unsupported_type` (415), `scanned_pdf` (422), `rate_limited` (429), `bad_request` (400), `model_unavailable` (503), and `internal` (500).
 

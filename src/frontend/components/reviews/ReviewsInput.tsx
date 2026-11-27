@@ -7,7 +7,7 @@ import { formatSize } from "@/frontend/lib/format";
 
 interface ReviewsInputProps {
   onSubmitText: (reviews: ReviewInput[]) => void;
-  onSubmitCsv: (file: File) => void;
+  onSubmitFile: (file: File) => void;
   disabled?: boolean;
 }
 
@@ -21,12 +21,12 @@ function parseReviewsText(raw: string): ReviewInput[] {
 
 export function ReviewsInput({
   onSubmitText,
-  onSubmitCsv,
+  onSubmitFile,
   disabled = false,
 }: ReviewsInputProps) {
   const [text, setText] = useState("");
-  const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [csvError, setCsvError] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const reviews = parseReviewsText(text);
@@ -41,25 +41,25 @@ export function ReviewsInput({
     }
   }
 
-  function handleCsvSelect(file: File) {
-    if (!/\.csv$/i.test(file.name)) {
-      setCsvError("Please choose a .csv file.");
-      setCsvFile(null);
+  function handleFileSelect(selected: File) {
+    if (!/\.(csv|xlsx)$/i.test(selected.name)) {
+      setFileError("Please choose a .csv or .xlsx file.");
+      setFile(null);
       return;
     }
-    if (file.size > MAX_FILE_MB * 1024 * 1024) {
-      setCsvError(`File is larger than ${MAX_FILE_MB} MB.`);
-      setCsvFile(null);
+    if (selected.size > MAX_FILE_MB * 1024 * 1024) {
+      setFileError(`File is larger than ${MAX_FILE_MB} MB.`);
+      setFile(null);
       return;
     }
-    setCsvError(null);
-    setCsvFile(file);
+    setFileError(null);
+    setFile(selected);
   }
 
   function handleDrop(e: DragEvent) {
     e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) handleCsvSelect(file);
+    const dropped = e.dataTransfer.files[0];
+    if (dropped) handleFileSelect(dropped);
   }
 
   return (
@@ -119,7 +119,7 @@ export function ReviewsInput({
         <div className="flex-1 h-px" style={{ background: "var(--rule)" }} />
       </div>
 
-      {/* CSV upload */}
+      {/* CSV / XLSX upload */}
       <div
         className="flex flex-col items-center gap-3 py-6 px-4 rounded-sm"
         style={{ border: "2px dashed var(--rule)" }}
@@ -128,7 +128,7 @@ export function ReviewsInput({
         onClick={() => !disabled && inputRef.current?.click()}
         role="button"
         tabIndex={0}
-        aria-label="Upload a CSV file"
+        aria-label="Upload a CSV or XLSX file"
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -139,10 +139,10 @@ export function ReviewsInput({
         <input
           ref={inputRef}
           type="file"
-          accept=".csv"
+          accept=".csv,.xlsx"
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) handleCsvSelect(file);
+            if (file) handleFileSelect(file);
           }}
           className="hidden"
           aria-hidden="true"
@@ -150,7 +150,7 @@ export function ReviewsInput({
           disabled={disabled}
         />
 
-        {csvFile ? (
+        {file ? (
           <div className="flex items-center gap-3">
             <span
               style={{
@@ -158,14 +158,14 @@ export function ReviewsInput({
                 fontSize: "var(--fs-small)",
               }}
             >
-              {csvFile.name}
+              {file.name}
             </span>
-            <span className="mono-label">{formatSize(csvFile.size)}</span>
+            <span className="mono-label">{formatSize(file.size)}</span>
             <button
               className="btn-secondary"
               onClick={(e) => {
                 e.stopPropagation();
-                setCsvFile(null);
+                setFile(null);
                 if (inputRef.current) inputRef.current.value = "";
               }}
             >
@@ -181,15 +181,17 @@ export function ReviewsInput({
                 fontStyle: "italic",
               }}
             >
-              Upload a CSV with a &ldquo;review&rdquo; or &ldquo;text&rdquo;
-              column
+              Upload a CSV or XLSX with a &ldquo;review&rdquo; or
+              &ldquo;text&rdquo; column
             </span>
-            <span className="mono-label">.csv — up to {MAX_FILE_MB} MB</span>
+            <span className="mono-label">
+              .csv / .xlsx — up to {MAX_FILE_MB} MB
+            </span>
           </>
         )}
       </div>
 
-      {csvError && (
+      {fileError && (
         <p
           className="m-0 text-xs"
           style={{
@@ -198,18 +200,18 @@ export function ReviewsInput({
           }}
           role="alert"
         >
-          {csvError}
+          {fileError}
         </p>
       )}
 
-      {csvFile && (
+      {file && (
         <div className="flex justify-end">
           <button
             className="btn-primary"
-            onClick={() => onSubmitCsv(csvFile)}
+            onClick={() => onSubmitFile(file)}
             disabled={disabled}
           >
-            Analyse CSV
+            Analyse file
           </button>
         </div>
       )}
